@@ -3,18 +3,18 @@
 	import { Marked } from "marked";
 
 	import { markedHighlight } from "marked-highlight";
-  	import hljs from "highlight.js";
-	import { writable } from 'svelte/store';
+	import hljs from "highlight.js";
+	import { writable } from "svelte/store";
 
 	// Configure marked with marked-highlight and highlight.js
 	const marked = new Marked(
 		markedHighlight({
 			langPrefix: "hljs language-",
-			highlight: function(code, lang) {
+			highlight: function (code, lang) {
 				const language = hljs.getLanguage(lang) ? lang : "plaintext";
 				return hljs.highlight(code, { language }).value;
 			},
-		})
+		}),
 	);
 
 	const botLastActivity = writable(Date.now());
@@ -23,7 +23,7 @@
 	let message = "";
 	let conversation = [];
 	let isBotResponding = false;
-	let chatContainerWidth = '800px'; // Default width
+	let chatContainerWidth = "800px"; // Default width
 	let chatContainer;
 
 	let timeSocket;
@@ -34,8 +34,7 @@
 		timeSocket = new WebSocket("ws://localhost:8765/time");
 		messageSocket = new WebSocket("ws://localhost:8765/message");
 		stopSocket = new WebSocket("ws://localhost:8765/stop");
-		chatContainer = document.querySelector('.chat-container');
-
+		chatContainer = document.querySelector(".chat-container");
 
 		timeSocket.onmessage = (event) => {
 			currentTime = event.data;
@@ -46,31 +45,33 @@
 			// console.log("messageSocket.onmessage: ", event);
 			const data = JSON.parse(event.data);
 
-            if (conversation.length > 0 && isBotResponding) {
-                let lastMessage = conversation[conversation.length - 1];
-                if (lastMessage.author === "Bot") {
-                    let lastSegment = lastMessage.segments[lastMessage.segments.length - 1];
-                    if (lastSegment.type === data.type) {
-                        // Append to the existing segment if the type is the same
-                        lastSegment.text += data.message;
-                        lastSegment.renderedText = marked.parse(lastSegment.text);
-                    } else {
-                        // Add a new segment for a different type
-                        lastMessage.segments.push({
-                            text: data.message,
-                            type: data.type,
-                            renderedText: marked.parse(data.message),
-                        });
-                    }
-                } else {
-                    // New bot message
-                    startNewBotMessage(data);
-                }
-            } else {
-                // First message from the bot or after user's message
-                startNewBotMessage(data);
-            }
-
+			if (conversation.length > 0 && isBotResponding) {
+				let lastMessage = conversation[conversation.length - 1];
+				if (lastMessage.author === "Bot") {
+					let lastSegment =
+						lastMessage.segments[lastMessage.segments.length - 1];
+					if (lastSegment.type === data.type) {
+						// Append to the existing segment if the type is the same
+						lastSegment.text += data.message;
+						lastSegment.renderedText = marked.parse(
+							lastSegment.text,
+						);
+					} else {
+						// Add a new segment for a different type
+						lastMessage.segments.push({
+							text: data.message,
+							type: data.type,
+							renderedText: marked.parse(data.message),
+						});
+					}
+				} else {
+					// New bot message
+					startNewBotMessage(data);
+				}
+			} else {
+				// First message from the bot or after user's message
+				startNewBotMessage(data);
+			}
 
 			conversation = [...conversation];
 			// 	lastMessage.text += data.message;
@@ -88,37 +89,38 @@
 			// // await tick();
 			// autoScroll();
 		};
-		
-		
-
 	});
 
-    function startNewBotMessage(data) {
-        conversation.push({
-            author: "Bot",
-            segments: [{
-                text: data.message,
-                type: data.type,
-                renderedText: marked.parse(data.message),
-            }],
-        });
-        isBotResponding = true;
-    }
+	function startNewBotMessage(data) {
+		conversation.push({
+			author: "Bot",
+			segments: [
+				{
+					text: data.message,
+					type: data.type,
+					renderedText: marked.parse(data.message),
+				},
+			],
+		});
+		isBotResponding = true;
+	}
 
 	$: {
 		$botLastActivity; // Reactive dependency on the bot's last activity
-    	tick().then(autoScroll); // This makes sure the DOM has updated before scrolling
+		tick().then(autoScroll); // This makes sure the DOM has updated before scrolling
 		console.log("react");
-  	}
+	}
 
 	function sendMessage() {
 		if (messageSocket && messageSocket.readyState === WebSocket.OPEN) {
 			let userMessage = {
 				author: "User",
-				segments: [{
-					text: message,
-					renderedText: marked.parse(message),
-				}],
+				segments: [
+					{
+						text: message,
+						renderedText: marked.parse(message),
+					},
+				],
 			};
 			conversation.push(userMessage);
 			isBotResponding = false;
@@ -143,52 +145,61 @@
 	}
 
 	function handleChatContainerResize(event) {
-    	chatContainerWidth = `${event.target.offsetWidth}px`;
+		chatContainerWidth = `${event.target.offsetWidth}px`;
 	}
 
 	function autoScroll() {
 		// const shouldScroll = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 1;
 		// let shouldScroll = true;
-		const shouldScroll = chatContainer.scrollTop + chatContainer.clientHeight + 75 >= chatContainer.scrollHeight;
+		const shouldScroll =
+			chatContainer.scrollTop + chatContainer.clientHeight + 75 >=
+			chatContainer.scrollHeight;
 
 		if (shouldScroll) {
-			console.log('Auto-scrolling...', {
+			console.log("Auto-scrolling...", {
 				element: chatContainer,
 				scrollHeight: chatContainer.scrollHeight,
 				clientHeight: chatContainer.clientHeight,
-				scrollTop: chatContainer.scrollTop
+				scrollTop: chatContainer.scrollTop,
 			});
 
 			const scrollOptions = {
 				top: chatContainer.scrollHeight,
-				behavior: 'smooth'
+				behavior: "smooth",
 			};
 
 			// Try scrolling to the bottom using an alternative approach if needed
-			if ('scrollTo' in chatContainer) {
+			if ("scrollTo" in chatContainer) {
 				chatContainer.scrollTo(scrollOptions);
-			} else if ('scrollTop' in chatContainer) {
+			} else if ("scrollTop" in chatContainer) {
 				// Fallback for browsers that do not support `scrollTo` with options
 				chatContainer.scrollTop = chatContainer.scrollHeight;
 			} else {
-				console.error('Unable to auto-scroll: chatContainer does not have scrollTo or scrollTop.');
+				console.error(
+					"Unable to auto-scroll: chatContainer does not have scrollTo or scrollTop.",
+				);
 			}
 		}
 	}
-
 </script>
 
 <div class="app-container">
 	<div class="clock">Current Time: {currentTime}</div>
 
 	<div class="containers-wrapper">
-		<div class="chat-container" on:resize={handleChatContainerResize} bind:this={chatContainer}>
+		<div
+			class="chat-container"
+			on:resize={handleChatContainerResize}
+			bind:this={chatContainer}
+		>
 			{#each conversation as msg}
 				<div class="message {msg.author}">
 					<strong>{msg.author}:</strong>
 					<span class="message-content">
 						{#each msg.segments as segment}
-							<span class={`segment ${segment.type}`}>{@html segment.renderedText}</span>
+							<span class={`segment ${segment.type}`}
+								>{@html segment.renderedText}</span
+							>
 						{/each}
 					</span>
 				</div>
@@ -211,38 +222,45 @@
 </div>
 
 <style>
+	@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap");
 
 	:root {
-    	--chat-container-width: 800px; /* Default width */
+		--background-dark: #121212;
+		--background-lighter: #1e1e1e;
+		--bot-message-bg: #003300;
+		--user-message-bg: #330033;
+		--text-color: #ffffff;
+		--input-bg-color: #262626;
+		--border-color: #333333;
+		--button-bg-color: #444444;
+		--scrollbar-bg: #2e2e2e;
+		--scrollbar-thumb-bg: #555555;
+		--border-radius: 10px;
+		--chat-container-width: 800px;
 	}
 
 	:global(body) {
-		background-color: #121212;
-		color: white;
+		background-color: var(--background-dark);
+		color: var(--text-color);
 		margin: 0;
-		font-family: Arial, sans-serif; /* Optional: Set a default font */
+		font-family: "Roboto", sans-serif;
 	}
-
-	:global(.message .hljs) {
-  		background-color: inherit; /* Inherit the background color from the message container */
-  		color: inherit; /* Inherit the text color from the message container */
-	}
-
 
 	.app-container {
 		display: grid;
 		place-items: center;
 		gap: 10px;
-		margin: auto;
 		padding: 20px;
-		background-color: #121212;
+		/* width: 100%; */
+		/* max-width: var(--chat-container-width)1; */
+		margin: auto;
 	}
 
 	.containers-wrapper {
 		display: flex;
 		flex-direction: column;
-		align-items: center; /* Center align the containers */
-		/* max-width: 800px; Maximum width */
+		align-items: center;
+		/* width: 100%; */
 	}
 
 	.chat-container,
@@ -253,18 +271,16 @@
 
 	.chat-container {
 		width: var(--chat-container-width);
-		height: 600px;
-		min-height: 600px;
-		border: 1px solid #333;
-		background-color: #1a1a1a;
+		background-color: var(--background-lighter);
+		border: 1px solid var(--border-color);
+		box-sizing: border-box;
 		padding: 10px;
-		/* overflow-y: auto; */
+		margin-bottom: 10px;
 		overflow: auto;
 		resize: both;
-		box-sizing: border-box;
-		margin-bottom: 10px;
-		/* display: flex;
-		flex-direction: column-reverse; */
+		height: 600px;
+		min-height: 600px;
+		border-radius: var(--border-radius);
 		display: flex;
 		flex-direction: column;
 	}
@@ -272,65 +288,75 @@
 	.input-container {
 		display: flex;
 		flex-direction: column;
+		background: var(--input-bg-color);
+		border: 1px solid var(--border-color);
+		border-radius: var(--border-radius);
+		margin-top: 10px;
 		resize: vertical;
 		overflow: hidden;
 	}
 
 	.input-container textarea {
-		flex-grow: 1;
+		background: var(--input-bg-color);
+		color: var(--text-color);
 		padding: 10px;
-		background-color: #262626;
-		color: white;
 		border: 1px solid #333;
 		resize: none;
+		flex-grow: 1;
 	}
 
 	.button-container {
 		display: flex;
-		justify-content: start;
+		justify-content: flex-start;
+		padding: 10px;
 	}
 
-	.input-container button {
-		padding: 5px 10px;
-		margin-right: 10px;
-		background-color: #333; /* Dark background for buttons */
-		color: white;
+	.button-container button {
+		background-color: var(--button-bg-color);
+		color: var(--text-color);
 		border: none;
+		margin-right: 10px;
+		padding: 8px 16px;
+		border-radius: var(--border-radius);
 		cursor: pointer;
+		transition: background-color 0.3s;
+	}
+
+	.button-container button:hover {
+		background-color: lighten(var(--button-bg-color), 10%);
 	}
 
 	.message {
-		border: 1px solid #444;
-		padding: 5px;
+		background-color: var(--background-lighter);
+		border: 1px solid var(--border-color);
+		border-radius: var(--border-radius);
 		margin: 5px 0;
+		padding: 10px;
 		white-space: pre-wrap;
-		width: 100%;
-		overflow-wrap: break-word;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 	}
 
 	.User {
-		background-color: #170016;
+		background-color: var(--user-message-bg);
 	}
 
 	.Bot {
-		background-color: #001300;
+		background-color: var(--bot-message-bg);
 	}
 
-	.message-content, .segment {
- 	   display: inline;
-	   white-space: pre-wrap;
+	.segment {
+		display: inline;
 	}
 
-    .segment.tool_call {
-        color: yellow;
-    }
+	.segment.tool_call {
+		color: yellow;
+	}
 
-    .segment.tool_call_result {
-        color: orange;
-    }
+	.segment.tool_call_result {
+		color: orange;
+	}
 
-    .segment.text_response {
-        color: white;
-    }
-
+	.segment.text_response {
+		color: var(--text-color);
+	}
 </style>
